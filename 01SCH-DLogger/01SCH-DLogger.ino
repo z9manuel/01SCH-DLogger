@@ -35,9 +35,9 @@ void setup() {
 	digitalWrite(ledVerde, HIGH);
 	delay(500);
 	digitalWrite(ledAzul, HIGH);
-	iniciarReloj();
 	Serial.begin(115200);
 	SD_validar();
+	iniciarReloj();
 	serialbt.begin("SUCAHERSA_DL");
 	dht.begin();
 	Serial.println("Iniciando");
@@ -105,24 +105,23 @@ void datos_obtener() {
 		Serial.println("No se peuede leer temperatura/humedad");
 		delay(2000);
 	}
-	bftTiempo = "2020-04-27 14:10:00";
-	bfrRTD = 10.4;
-	bfrDHTT = t;
-	bfrDHTH = h;
+	bftTiempo = tiempo_obtener();	//ok
+	bfrRTD = 0.00;					//NO
+	bfrDHTT = t;					//ok
+	bfrDHTH = h;					//ok
 	bfrLA = "21.1171409";
 	bfrLO = "-101.7030218";
 }
 
 void datos_formatear() {
 	//Convierte datos de los busffers para ser almaceados en tarjeta SD
-	for (int i; i < 60; i++) {
 		cadena = "{\"time\":\"" + bftTiempo +
 			"\",\"rtd\":" + bfrRTD +
 			",\"dhtt\":" + bfrDHTT +
 			",\"dhth\":" + bfrDHTH +
 			",\"la\":\"" + bfrLA +
 			"\",\"lo\":\"" + bfrLO + "\"}";
-	}
+		//Serial.println(cadena);
 }
 
 
@@ -235,9 +234,41 @@ void iniciarReloj() {
 		Serial.println("No se encontro reloj");
 		while (1);
 	}
+	//horaEstablecer();
+}
+
+String tiempo_obtener() {
+	DateTime now = reloj.now();
+	String ahora;
+	String YY, MM, DD, hh, mm, ss;
+	YY = String(now.year());
+	MM = String(now.month());
+	DD = String(now.day());
+	hh = String(now.hour());
+	mm = String(now.minute());
+	ss = String(now.second());
+
+	MM.length() == 1 ? MM = "0" + MM : MM;
+	DD.length() == 1 ? DD = "0" + DD : DD;
+	hh.length() == 1 ? hh = "0" + hh : hh;
+	mm.length() == 1 ? mm = "0" + mm : mm;
+	ss.length() == 1 ? ss = "0" + ss : ss;
+	ahora = YY + "-" + MM + "-" + DD + " " + hh + ":" + mm + ":" + ss;
+	return ahora;
 }
 
 
 bool horaEstablecer() {
+	DateTime now = reloj.now();
+	int YY, MM, DD, hh, mm, ss;
+
+	YY = 2020;
+	MM = 07;
+	DD = 10;
+	hh = 11;
+	mm = 49;
+	ss = 00;
+
+	reloj.adjust(DateTime(YY, MM, DD, hh, mm, ss));
 	return 1;
 }
