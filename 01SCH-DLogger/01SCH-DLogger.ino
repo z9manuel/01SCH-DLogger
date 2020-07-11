@@ -1,7 +1,7 @@
 ﻿/*
- Name:		_01SCH_DLogger.ino
- Created:	7/2/2020 1:41:16 PM
- Author:	mrodriguez
+Name:		_01SCH_DLogger.ino
+Created : 7 / 2 / 2020 1 : 41 : 16 PM
+Author : mrodriguez
 */
 
 #include <BluetoothSerial.h>
@@ -10,24 +10,32 @@
 #include <SPI.h>
 #include <DHT.h>
 #include "RTClib.h"
+#include <TinyGPS++.h>
+#include <SoftwareSerial.h>
+
 
 #define DHTPIN		13
 #define DHTTYPE		DHT22
 #define SD_CS		5						// Define CS pin para modulo SD
+static const int RXPin = 16, TXPin = 17;
+static const uint32_t GPSBaud = 9600;
 BluetoothSerial serialbt;			//La velocidad de conexión de la PC es a 38400
 DHT dht(DHTPIN, DHTTYPE);
 RTC_DS1307 reloj;
 File schFile;
+TinyGPSPlus gps;
+SoftwareSerial ssGPS(RXPin, TXPin);
 
 int ledVerde = 4;
 int ledAzul = 2;
 int bfrDHTH;
 float bfrRTD;
 float bfrDHTT;
-String bfrLA;
-String bfrLO;
+float bfrLA;
+float bfrLO;
 String cadena;
 String bftTiempo;
+unsigned long millis_previos = 0, inervalo = 30000;
 
 void setup() {
 	pinMode(ledVerde, OUTPUT);
@@ -46,12 +54,27 @@ void setup() {
 	delay(500);
 	digitalWrite(ledAzul, LOW);
 	delay(1000);
+	ssGPS.begin(GPSBaud);
 }
 
 void loop() {
-	datos_obtener();
-	datos_formatear();
-	SD_escribirLog(cadena);
+	while (ssGPS.available() > 0)
+		if (gps.encode(ssGPS.read()))
+			GPSobtener();
+	if (millis() > 5000 && gps.charsProcessed() < 10)
+	{
+		Serial.println("GPS no detectado: revisar tarjeta.");
+		while (true);
+	}
+
+	unsigned long millies_atcuales = millis();
+	if (millies_atcuales - millis_previos > inervalo)
+	{
+		millis_previos = millies_atcuales;
+		datos_obtener();
+		datos_formatear();
+		SD_escribirLog(cadena);
+	}
 
 	if (serialbt.available()) {
 		delay(100);
@@ -59,7 +82,7 @@ void loop() {
 		evaluar_serial(opcion);
 	}
 
-	delay(30000);
+	//delay(15000);
 
 	/*
 		if (Serial.available()) {
@@ -109,19 +132,17 @@ void datos_obtener() {
 	bfrRTD = 0.00;					//NO
 	bfrDHTT = t;					//ok
 	bfrDHTH = h;					//ok
-	bfrLA = "21.1171409";
-	bfrLO = "-101.7030218";
 }
 
 void datos_formatear() {
 	//Convierte datos de los busffers para ser almaceados en tarjeta SD
-		cadena = "{\"time\":\"" + bftTiempo +
-			"\",\"rtd\":" + bfrRTD +
-			",\"dhtt\":" + bfrDHTT +
-			",\"dhth\":" + bfrDHTH +
-			",\"la\":\"" + bfrLA +
-			"\",\"lo\":\"" + bfrLO + "\"}";
-		//Serial.println(cadena);
+	cadena = "{\"time\":\"" + bftTiempo +
+		"\",\"rtd\":" + bfrRTD +
+		",\"dhtt\":" + bfrDHTT +
+		",\"dhth\":" + bfrDHTH +
+		",\"la\":\"" + String(bfrLA, 6) +
+		"\",\"lo\":\"" + String(bfrLO, 6) + "\"}";
+	//Serial.println(cadena);
 }
 
 
@@ -264,11 +285,26 @@ bool horaEstablecer() {
 
 	YY = 2020;
 	MM = 07;
-	DD = 10;
-	hh = 11;
-	mm = 49;
+	DD = 11;
+	hh = 01;
+	mm = 42;
 	ss = 00;
 
 	reloj.adjust(DateTime(YY, MM, DD, hh, mm, ss));
 	return 1;
+}
+
+void GPSobtener()
+{
+	if (gps.location.isValid())
+	{
+		bfrLA = gps.location.lat();
+		bfrLO = gps.location.lng();
+	}
+	else
+	{
+		Serial.println(F("Error GPS"));
+		float bfrLA = 0;
+		float bfrLO = 0;
+	}
 }
