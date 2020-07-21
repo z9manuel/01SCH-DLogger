@@ -26,6 +26,8 @@ File schFile;
 TinyGPSPlus gps;
 SoftwareSerial ssGPS(RXPin, TXPin);
 
+bool activado = 0;
+bool debug = 0;
 int ledVerde = 4;
 int ledAzul = 2;
 int bfrDHTH;
@@ -40,30 +42,35 @@ unsigned long millis_previos = 0, inervalo = 30000;
 void setup() {
 	pinMode(ledVerde, OUTPUT);
 	pinMode(ledAzul, OUTPUT);
-	digitalWrite(ledVerde, HIGH);
-	delay(500);
-	digitalWrite(ledAzul, HIGH);
+	ledOK();
 	Serial.begin(115200);
 	SD_validar();
 	iniciarReloj();
 	serialbt.begin("SUCAHERSA_DL");
 	dht.begin();
 	Serial.println("Iniciando");
-	delay(500);
-	digitalWrite(ledVerde, LOW);
-	delay(500);
-	digitalWrite(ledAzul, LOW);
-	delay(1000);
 	ssGPS.begin(GPSBaud);
+	ledOK();
+	debug ? Serial.println("Debug activado!") : false;
+	
+	
 }
 
 void loop() {
 	while (ssGPS.available() > 0)
-		if (gps.encode(ssGPS.read()))
-			GPSobtener();
+		if (gps.encode(ssGPS.read())) {
+			if (GPSobtener() == false) {
+				//ledFalla();
+				//Serial.println("Sin datos GPS.");
+				break;
+			}
+
+		}
+
 	if (millis() > 5000 && gps.charsProcessed() < 10)
 	{
-		Serial.println("GPS no detectado: revisar tarjeta.");
+		debug ? Serial.println("GPS no detectado: revisar tarjeta.") : false;
+		ledFalla();
 		while (true);
 	}
 
@@ -125,7 +132,7 @@ void datos_obtener() {
 	float t = dht.readTemperature();
 
 	if (isnan(h) || isnan(t)) {
-		Serial.println("No se peuede leer temperatura/humedad");
+		debug ? Serial.println("No se peuede leer temperatura/humedad") : false;
 		delay(2000);
 	}
 	bftTiempo = tiempo_obtener();	//ok
@@ -163,7 +170,7 @@ void enviar_datos() {
 	serialbt.println("INICIO");
 	for (int i = 0; i < 60; i++) {
 		linea = cadena[i];
-		Serial.println(linea);
+		debug ? Serial.println(linea) : false;
 		serialbt.println(linea);
 	}
 	serialbt.println("FIN");
@@ -187,7 +194,7 @@ bool SD_leerLog() {
 			dataLog.position();
 			while (dataLog.available()) {
 				linea = dataLog.readStringUntil('\n');
-				Serial.println(linea);
+				debug ? Serial.println(linea) : false;
 				serialbt.println(linea);
 				/*enviado = enviar_a_API(linea);
 				if (enviado == false) {
@@ -200,6 +207,7 @@ bool SD_leerLog() {
 			}
 		}
 	}
+	ledFalla();
 	return false;
 }
 
@@ -208,15 +216,14 @@ bool SD_escribirLog(String cadena) {
 		SD.begin(SD_CS);
 		File dataLog = SD.open("/log.txt", FILE_APPEND);
 		if (dataLog) {
-			digitalWrite(ledAzul, HIGH);
 			dataLog.println(cadena);
 			dataLog.close();
-			Serial.println(cadena);
-			delay(150);
-			digitalWrite(ledAzul, LOW);
+			debug ? Serial.println(cadena) : false;
+			ledOK();
 			return 1;
 		}
 	}
+	ledFalla();
 	return false;
 }
 
@@ -224,27 +231,32 @@ bool SD_borrarLog() {
 	if (SD_validar()) {
 		SD.begin(SD_CS);
 		if (SD.remove("/log.txt")) {
-			Serial.println("Registro borrado.");
+			debug ? Serial.println("Registro borrado.") : false;
 			schFile.close();
 			return 1;
 		}
 	}
+	ledFalla();
+	ledFalla();
 	return false;
 }
 
 bool SD_validar() {
 	SD.begin(SD_CS);
 	if (!SD.begin(SD_CS)) {
-		Serial.println("Error modulo SD!");
+		debug ? Serial.println("Error modulo SD!") : false;
+		ledFalla();
 		return false;
 	}
 	uint8_t cardType = SD.cardType();
 	if (cardType == CARD_NONE) {
-		Serial.println("Error tarjeta SD!");
+		debug ? Serial.println("Error tarjeta SD!") : false;
+		ledFalla();
 		return false;
 	}
 	if (!SD.begin(SD_CS)) {
-		Serial.println("ERROR - Falla en tarjeta SD!");
+		debug ? Serial.println("ERROR - Falla en tarjeta SD!") : false;
+		ledFalla();
 		return false;
 	}
 	return 1;
@@ -252,7 +264,7 @@ bool SD_validar() {
 
 void iniciarReloj() {
 	if (!reloj.begin()) {
-		Serial.println("No se encontro reloj");
+		debug ? Serial.println("No se encontro reloj") : false;
 		while (1);
 	}
 	//horaEstablecer();
@@ -287,24 +299,51 @@ bool horaEstablecer() {
 	MM = 07;
 	DD = 11;
 	hh = 01;
-	mm = 42;
+	mm = 40;
 	ss = 00;
 
 	reloj.adjust(DateTime(YY, MM, DD, hh, mm, ss));
 	return 1;
 }
 
-void GPSobtener()
+bool GPSobtener()
 {
 	if (gps.location.isValid())
 	{
 		bfrLA = gps.location.lat();
 		bfrLO = gps.location.lng();
+		return true;
 	}
 	else
 	{
-		Serial.println(F("Error GPS"));
 		float bfrLA = 0;
 		float bfrLO = 0;
+		return false;
 	}
+}
+
+
+void ledOK() {
+	for (int i = 1; i <= 3; i++) {
+		digitalWrite(ledVerde, HIGH);
+		digitalWrite(ledAzul, HIGH);
+		delay(100);
+		digitalWrite(ledVerde, LOW);
+		digitalWrite(ledAzul, LOW);
+		delay(100);
+	}
+	
+}
+
+void ledFalla() {
+	for (int i = 1; i <= 10; i++) {
+		digitalWrite(ledVerde, LOW);
+		digitalWrite(ledAzul, HIGH);
+		delay(100);
+		digitalWrite(ledVerde, HIGH);
+		digitalWrite(ledAzul, LOW);
+		delay(100);
+	}
+	digitalWrite(ledVerde, LOW);
+	digitalWrite(ledAzul, LOW);
 }
