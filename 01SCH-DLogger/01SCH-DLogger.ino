@@ -1,8 +1,8 @@
 ﻿/*
 Name:		_01SCH_DLogger.ino
-Created : 7 / 2 / 2020 1 : 41 : 16 PM
-Finished : 7 / 21 / 2020 21 : 55 : 00 PM
-Author : mrodriguez
+Created :	7 / 2 / 2020 1 : 41 : 16 PM
+Finished :	7 / 21 / 2020 22 : 55 : 00 PM
+Author :	mrodriguez@ciatec.mx
 */
 
 #include <BluetoothSerial.h>
@@ -71,8 +71,6 @@ void loop() {
 	while (ssGPS.available() > 0)
 		if (gps.encode(ssGPS.read())) {
 			if (GPSobtener() == false) {
-				//ledFalla();
-				//Serial.println("Sin datos GPS.");
 				break;
 			}
 		}
@@ -197,19 +195,6 @@ bool mostrar_datos() {
 	}
 	ledFalla();
 	return false;
-}
-
-void enviar_datos____BORRAR() {
-	//Muestra los datos almacenado en la tarjeta SD y despues los debe borrar
-	String linea;
-	serialbt.println("INICIO");
-	for (int i = 0; i < 60; i++) {
-		linea = cadena[i];
-		debug ? Serial.println(linea) : false;
-		serialbt.println(linea);
-	}
-	serialbt.println("FIN");
-	SD_borrarLog();
 }
 
 bool vaidarActivar() {
@@ -344,7 +329,6 @@ void iniciarReloj() {
 		debug ? Serial.println("No se encontro reloj") : false;
 		while (1);
 	}
-	//horaEstablecer();
 }
 
 String tiempo_obtener() {
@@ -421,7 +405,6 @@ void ledOK() {
 		digitalWrite(ledAzul, LOW);
 		delay(100);
 	}
-	
 }
 
 void ledFalla() {
