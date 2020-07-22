@@ -170,7 +170,12 @@ void datos_formatear() {
 		",\"dhth\":" + bfrDHTH +
 		",\"la\":\"" + String(bfrLA, 6) +
 		"\",\"lo\":\"" + String(bfrLO, 6) + "\"}";
-	//Serial.println(cadena);
+	String csv = bftTiempo + ',' + bfrDHTT + ',' + bfrDHTH + ',' + String(bfrLA, 6) + ',' + String(bfrLO, 6);
+	File dataLog = SD.open("/log.csv", FILE_APPEND);
+	if (dataLog) {
+		dataLog.println(csv);
+		dataLog.close();
+	}
 }
 
 bool mostrar_datos() {
@@ -194,7 +199,7 @@ bool mostrar_datos() {
 	return false;
 }
 
-void enviar_datos() {
+void enviar_datos____BORRAR() {
 	//Muestra los datos almacenado en la tarjeta SD y despues los debe borrar
 	String linea;
 	serialbt.println("INICIO");
@@ -294,6 +299,11 @@ bool SD_borrarLog() {
 	if (SD_validar()) {
 		SD.begin(SD_CS);
 		if (SD.remove("/activar")) {
+			activado = false;
+			debug ? Serial.println("Equipo desactivado.") : false;
+			schFile.close();
+		}
+		if (SD.remove("/log.csv")) {
 			activado = false;
 			debug ? Serial.println("Equipo desactivado.") : false;
 			schFile.close();
@@ -432,5 +442,6 @@ void into() {
 	Serial.println("CIATEC, A.C.");
 	Serial.println("www.ciatec.mx");
 	Serial.println("Sistema de registro de puntos de temperatura en tiempo y coordenadas.");
+	debug ? Serial.println("mrodriguez@ciatec.mx") : false;
 	Serial.println("\n\n");
 }
