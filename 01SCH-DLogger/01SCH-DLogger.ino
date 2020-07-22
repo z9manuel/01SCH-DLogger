@@ -1,6 +1,7 @@
 ﻿/*
 Name:		_01SCH_DLogger.ino
 Created : 7 / 2 / 2020 1 : 41 : 16 PM
+Finished : 7 / 21 / 2020 21 : 55 : 00 PM
 Author : mrodriguez
 */
 
@@ -17,6 +18,7 @@ Author : mrodriguez
 #define DHTPIN		13
 #define DHTTYPE		DHT22
 #define SD_CS		5						// Define CS pin para modulo SD
+#define Boton 15
 static const int RXPin = 16, TXPin = 17;
 static const uint32_t GPSBaud = 9600;
 BluetoothSerial serialbt;			//La velocidad de conexión de la PC es a 38400
@@ -37,7 +39,8 @@ float bfrLA;
 float bfrLO;
 String cadena;
 String bftTiempo;
-unsigned long millis_previos = 0, inervalo = 30000;
+unsigned long millis_previos = 0, millis_previos_activo = 0; 
+int inervalo = 30000, inervalo_activo = 10000;
 
 void setup() {
 	pinMode(ledVerde, OUTPUT);
@@ -51,12 +54,20 @@ void setup() {
 	Serial.println("Iniciando");
 	ssGPS.begin(GPSBaud);
 	ledOK();
+	debug = debugActivar();
 	debug ? Serial.println("Debug activado!") : false;
-	
-	
+	activado = vaidarActivar();
+	into();
 }
 
 void loop() {
+	if (!activado && digitalRead(Boton)) {
+		activado = true;
+		iniciarActivar();
+		delay(10);
+		ledOK();
+	}
+	
 	while (ssGPS.available() > 0)
 		if (gps.encode(ssGPS.read())) {
 			if (GPSobtener() == false) {
@@ -64,7 +75,6 @@ void loop() {
 				//Serial.println("Sin datos GPS.");
 				break;
 			}
-
 		}
 
 	if (millis() > 5000 && gps.charsProcessed() < 10)
@@ -73,14 +83,29 @@ void loop() {
 		ledFalla();
 		while (true);
 	}
-
+	unsigned long millies_atcuales_activo = millis();
+	if (millies_atcuales_activo - millis_previos_activo > inervalo_activo) {
+		if (activado) {
+			millis_previos_activo = millies_atcuales_activo;
+			digitalWrite(ledVerde, HIGH);
+			delay(100);
+			digitalWrite(ledVerde, LOW);
+		}
+		else {
+			millis_previos_activo = millies_atcuales_activo;
+			digitalWrite(ledAzul, HIGH);
+			delay(100);
+			digitalWrite(ledAzul, LOW);
+		}
+	}
 	unsigned long millies_atcuales = millis();
-	if (millies_atcuales - millis_previos > inervalo)
-	{
-		millis_previos = millies_atcuales;
-		datos_obtener();
-		datos_formatear();
-		SD_escribirLog(cadena);
+	if (millies_atcuales - millis_previos > inervalo){
+		if (activado) {
+			millis_previos = millies_atcuales;
+			datos_obtener();
+			datos_formatear();
+			SD_escribirLog(cadena);
+		}
 	}
 
 	if (serialbt.available()) {
@@ -89,21 +114,10 @@ void loop() {
 		evaluar_serial(opcion);
 	}
 
-	//delay(15000);
-
-	/*
-		if (Serial.available()) {
-		char x = Serial.read();
-		serialbt.write(x);
-	}
-	if (serialbt.available()) {
-		char y = serialbt.read();
-		Serial.print(y);
-	}
-	*/
 }
 
 void evaluar_serial(char opcion) {
+	String laHora;
 	switch (opcion) {
 	case 'd':
 		//Opci�n para mostrar datos
@@ -115,17 +129,24 @@ void evaluar_serial(char opcion) {
 		break;
 	case 's':
 		//Opci�n para enviar datos
-		enviar_datos();
+		SD_leerLog();
 		break;
 	case 'c':
 		//Opci�n para actualizar fecha
-		actualizar_fecha();
+		laHora = serialbt.readString();
+		debug ? Serial.println("La hora recibida es: " +  laHora) : false;
+		if (laHora.length() == 21) {
+			horaEstablecer(laHora);
+		}
+		else
+			debug ? Serial.println("La hora recibida es erronea.") : false;
 		break;
 	default:
 		break;
 	}
 
 }
+
 void datos_obtener() {
 	//Generaci�n de datos que simulan los datos obtenidos de los sensores
 	float h = dht.readHumidity();
@@ -152,17 +173,26 @@ void datos_formatear() {
 	//Serial.println(cadena);
 }
 
-
-void mostrar_datos() {
+bool mostrar_datos() {
 	//Muestra los datos almacenado en la tarjeta SD
-	String linea;
-	for (int i = 0; i < 60; i++) {
-		linea = cadena[i];
-		Serial.println(linea);
-		serialbt.println(linea);
+	if (SD_validar()) {
+		File dataLog = SD.open("/log.txt", FILE_READ);
+		if (dataLog) {
+			bool enviado = 0;
+			String linea;
+			dataLog.position();
+			while (dataLog.available()) {
+				linea = dataLog.readStringUntil('\n');
+				debug ? Serial.println(linea) : false;
+				serialbt.println(linea);
+			}
+			dataLog.close();
+			return 1;
+		}
 	}
+	ledFalla();
+	return false;
 }
-
 
 void enviar_datos() {
 	//Muestra los datos almacenado en la tarjeta SD y despues los debe borrar
@@ -177,13 +207,46 @@ void enviar_datos() {
 	SD_borrarLog();
 }
 
-void actualizar_fecha() {
-	//Esta funcion recibe una fecha que sirve para actualizar el reloj en tipo real del Datalogger
-	String fecha = serialbt.readString();
-	serialbt.println(fecha);
+bool vaidarActivar() {
+	if (SD_validar()) {
+		File dataLog = SD.open("/activar", FILE_READ);
+		if (dataLog) {
+			debug ? Serial.println("El dispositivo esta activado.") : false;
+			dataLog.close();
+			ledOK();
+			return true;
+		}
+	}
+	return false;
 }
 
+bool debugActivar() {
+	if (SD_validar()) {
+		File dataLog = SD.open("/debug", FILE_READ);
+		if (dataLog) {
+			debug ? Serial.println("El dispositivo esta en modo DEBUG.") : false;
+			dataLog.close();
+			ledOK();
+			return true;
+		}
+	}
+	return false;
+}
 
+bool iniciarActivar() {
+	if (SD_validar()) {
+		SD.begin(SD_CS);
+		File dataLog = SD.open("/activar", FILE_APPEND);
+		if (dataLog) {
+			debug ? Serial.println("El dispositivo ha sido activado.") : false;
+			dataLog.close();
+			activado = true;
+			ledOK();
+			return true;
+		}
+	}
+		return false;
+}
 
 bool SD_leerLog() {
 	if (SD_validar()) {
@@ -230,13 +293,17 @@ bool SD_escribirLog(String cadena) {
 bool SD_borrarLog() {
 	if (SD_validar()) {
 		SD.begin(SD_CS);
+		if (SD.remove("/activar")) {
+			activado = false;
+			debug ? Serial.println("Equipo desactivado.") : false;
+			schFile.close();
+		}
 		if (SD.remove("/log.txt")) {
 			debug ? Serial.println("Registro borrado.") : false;
 			schFile.close();
 			return 1;
 		}
 	}
-	ledFalla();
 	ledFalla();
 	return false;
 }
@@ -290,17 +357,30 @@ String tiempo_obtener() {
 	return ahora;
 }
 
-
-bool horaEstablecer() {
+bool horaEstablecer(String tiempo) {
 	DateTime now = reloj.now();
 	int YY, MM, DD, hh, mm, ss;
+	String anno, mes, dia, hora, minuto, segundo;
 
-	YY = 2020;
-	MM = 07;
-	DD = 11;
-	hh = 01;
-	mm = 40;
-	ss = 00;
+	for (int i = 0; i < 4; i++)
+		anno += tiempo[i];
+	for (int i = 5; i < 7; i++)
+		mes += tiempo[i];
+	for (int i = 8; i < 10; i++)
+		dia += tiempo[i];
+	for (int i = 11; i < 13; i++)
+		hora += tiempo[i];
+	for (int i = 14; i < 16; i++)
+		minuto += tiempo[i];
+	for (int i = 17; i <= 18; i++)
+		segundo += tiempo[i];
+	debug ? Serial.println("Tiempo a establecer: "+anno+mes+dia+hora+minuto+segundo) : false;
+	YY = anno.toInt();
+	MM = mes.toInt();
+	DD = dia.toInt();
+	hh = hora.toInt();
+	mm = minuto.toInt();
+	ss = segundo.toInt();
 
 	reloj.adjust(DateTime(YY, MM, DD, hh, mm, ss));
 	return 1;
@@ -321,7 +401,6 @@ bool GPSobtener()
 		return false;
 	}
 }
-
 
 void ledOK() {
 	for (int i = 1; i <= 3; i++) {
@@ -346,4 +425,12 @@ void ledFalla() {
 	}
 	digitalWrite(ledVerde, LOW);
 	digitalWrite(ledAzul, LOW);
+}
+
+void into() {
+	Serial.println("\n");
+	Serial.println("CIATEC, A.C.");
+	Serial.println("www.ciatec.mx");
+	Serial.println("Sistema de registro de puntos de temperatura en tiempo y coordenadas.");
+	Serial.println("\n\n");
 }
