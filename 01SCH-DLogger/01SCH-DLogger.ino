@@ -15,7 +15,7 @@ Author :	mrodriguez@ciatec.mx
 #include <SoftwareSerial.h>
 
 
-#define DHTPIN		13
+#define DHTPIN		14
 #define DHTTYPE		DHT22
 #define SD_CS		5						// Define CS pin para modulo SD
 #define Boton 15
@@ -117,6 +117,10 @@ void loop() {
 void evaluar_serial(char opcion) {
 	String laHora;
 	switch (opcion) {
+	case 't':
+		//Seña de prueba
+		serialbt.println("Ok!");
+		break;
 	case 'd':
 		//Opci�n para mostrar datos
 		mostrar_datos();
@@ -352,7 +356,7 @@ String tiempo_obtener() {
 }
 
 bool horaEstablecer(String tiempo) {
-	DateTime now = reloj.now();
+	DateTime now = reloj.now(); 
 	int YY, MM, DD, hh, mm, ss;
 	String anno, mes, dia, hora, minuto, segundo;
 
@@ -421,10 +425,15 @@ void ledFalla() {
 }
 
 void into() {
+	Serial.println("Iniciando...");
+	delay(2000);
 	Serial.println("\n");
 	Serial.println("CIATEC, A.C.");
+	Serial.println("DIRECCION DE INVESTIGACION Y SOLUCIONES TECNOLOGICAS");
+	Serial.println("SERVICIOS TECNOLOGICOS DE APOYO A LA SALUD");
+	Serial.println("SALUD 4.0");
 	Serial.println("www.ciatec.mx");
-	Serial.println("Sistema de registro de puntos de temperatura en tiempo y coordenadas.");
+	Serial.println("\nSistema de registro de puntos de temperatura en tiempo y coordenadas.");
 	debug ? Serial.println("mrodriguez@ciatec.mx") : false;
 	Serial.println("\n\n");
 }
