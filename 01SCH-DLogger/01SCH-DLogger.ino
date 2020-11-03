@@ -17,7 +17,7 @@ Author :	mrodriguez@ciatec.mx
 
 #define DHTPIN		14
 #define DHTTYPE		DHT22
-#define SD_CS		5						// Define CS pin para modulo SD
+#define SD_CS		5
 #define Boton 15
 static const int RXPin = 16, TXPin = 17;
 static const uint32_t GPSBaud = 9600;
@@ -57,7 +57,7 @@ void setup() {
 	debug = debugActivar();
 	debug ? Serial.println("Debug activado!") : false;
 	activado = vaidarActivar();
-	into();
+	intro();
 }
 
 void loop() {
@@ -118,7 +118,7 @@ void evaluar_serial(char opcion) {
 	String laHora;
 	switch (opcion) {
 	case 't':
-		//Seña de prueba
+		//Señal de prueba
 		serialbt.println("Ok!");
 		break;
 	case 'd':
@@ -424,7 +424,7 @@ void ledFalla() {
 	digitalWrite(ledAzul, LOW);
 }
 
-void into() {
+void intro() {
 	Serial.println("Iniciando...");
 	delay(2000);
 	Serial.println("\n");
