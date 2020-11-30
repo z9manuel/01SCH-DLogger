@@ -18,7 +18,7 @@ Author :	mrodriguez@ciatec.mx
 #define DHTPIN		14
 #define DHTTYPE		DHT22
 #define SD_CS		5
-#define Boton 15
+#define Boton		15
 static const int RXPin = 16, TXPin = 17;
 static const uint32_t GPSBaud = 9600;
 BluetoothSerial serialbt;			//La velocidad de conexión de la PC es a 38400
