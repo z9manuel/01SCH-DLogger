@@ -47,11 +47,11 @@ void setup() {
 	pinMode(ledAzul, OUTPUT);
 	ledOK();
 	Serial.begin(115200);
+	Serial.println("Iniciando...");
 	SD_validar();
 	iniciarReloj();
 	serialbt.begin("SUCAHERSA_DL");
 	dht.begin();
-	Serial.println("Iniciando");
 	ssGPS.begin(GPSBaud);
 	ledOK();
 	debug = debugActivar();
