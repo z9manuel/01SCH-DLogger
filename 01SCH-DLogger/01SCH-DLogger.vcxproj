@@ -123,7 +123,7 @@
   </ImportGroup>
   <ProjectExtensions>
     <VisualStudio>
-      <UserProperties arduino.upload.port="COM9" config.Debug.customdebug_esp32_esp32_debugger_type="none" />
+      <UserProperties arduino.upload.port="COM3" config.Debug.customdebug_esp32_esp32_debugger_type="none" />
     </VisualStudio>
   </ProjectExtensions>
 </Project>

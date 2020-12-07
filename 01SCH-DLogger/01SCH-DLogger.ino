@@ -50,7 +50,7 @@ void setup() {
 	Serial.println("Iniciando...");
 	SD_validar();
 	iniciarReloj();
-	serialbt.begin("SUCAHERSA_DL");
+	serialbt.begin("SUCAHERSA_proto");
 	dht.begin();
 	ssGPS.begin(GPSBaud);
 	ledOK();
@@ -63,8 +63,9 @@ void setup() {
 void loop() {
 	if (!activado && digitalRead(Boton)) {
 		activado = true;
+		debug ? Serial.println("Boton activar presionado.") : false;
 		iniciarActivar();
-		delay(10);
+		delay(100);
 		ledOK();
 	}
 	
@@ -132,6 +133,8 @@ void evaluar_serial(char opcion) {
 	case 's':
 		//Opci�n para enviar datos
 		SD_leerLog();
+		SD_borrarLog();
+		activado = false;
 		break;
 	case 'c':
 		//Opci�n para actualizar fecha
@@ -158,10 +161,13 @@ void datos_obtener() {
 		debug ? Serial.println("No se peuede leer temperatura/humedad") : false;
 		delay(2000);
 	}
-	bftTiempo = tiempo_obtener();	//ok
-	bfrRTD = 0.00;					//NO
-	bfrDHTT = t;					//ok
-	bfrDHTH = h;					//ok
+	else {
+		bftTiempo = tiempo_obtener();	//ok
+		bfrRTD = 0.00;					//NO
+		bfrDHTT = t;					//ok
+		bfrDHTH = h;					//ok
+	}
+	
 }
 
 void datos_formatear() {
@@ -249,6 +255,7 @@ bool SD_leerLog() {
 			bool enviado = 0;
 			String linea;
 			dataLog.position();
+			serialbt.println("INICIO");
 			while (dataLog.available()) {
 				linea = dataLog.readStringUntil('\n');
 				debug ? Serial.println(linea) : false;
@@ -258,6 +265,7 @@ bool SD_leerLog() {
 					return false;
 				}*/
 			}
+			serialbt.println("FIN");
 			dataLog.close();
 			if (SD_borrarLog()) {
 				return 1;
@@ -298,6 +306,7 @@ bool SD_borrarLog() {
 			schFile.close();
 		}
 		if (SD.remove("/log.txt")) {
+			activado = false;
 			debug ? Serial.println("Registro borrado.") : false;
 			schFile.close();
 			return 1;
